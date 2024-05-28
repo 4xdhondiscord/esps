@@ -1,0 +1,86 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+local function createESPBox(player)
+    local BoxLines = {}
+    for i = 1, 12 do
+        local line = Drawing.new("Line")
+        line.Visible = false
+        line.Color = Color3.new(1, 1, 1)
+        line.Thickness = 2
+        line.Transparency = 1
+        table.insert(BoxLines, line)
+    end
+
+    local function update()
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character.HumanoidRootPart
+            local cframe = hrp.CFrame
+            local size = Vector3.new(2, 3, 1) -- Adjust box size
+            local corners = {
+                cframe * Vector3.new(-size.X, -size.Y, -size.Z),
+                cframe * Vector3.new(-size.X, size.Y, -size.Z),
+                cframe * Vector3.new(size.X, size.Y, -size.Z),
+                cframe * Vector3.new(size.X, -size.Y, -size.Z),
+                cframe * Vector3.new(-size.X, -size.Y, size.Z),
+                cframe * Vector3.new(-size.X, size.Y, size.Z),
+                cframe * Vector3.new(size.X, size.Y, size.Z),
+                cframe * Vector3.new(size.X, -size.Y, size.Z)
+            }
+
+            local function worldToViewport(position)
+                local screenPos, onScreen = Camera:WorldToViewportPoint(position)
+                return Vector2.new(screenPos.X, screenPos.Y), onScreen
+            end
+
+            local screenCorners = {}
+            local onScreen = true
+            for _, corner in ipairs(corners) do
+                local screenPos, visible = worldToViewport(corner)
+                table.insert(screenCorners, screenPos)
+                if not visible then
+                    onScreen = false
+                end
+            end
+
+            if onScreen then
+                local edges = {
+                    {1, 2}, {2, 3}, {3, 4}, {4, 1}, -- Bottom edges
+                    {5, 6}, {6, 7}, {7, 8}, {8, 5}, -- Top edges
+                    {1, 5}, {2, 6}, {3, 7}, {4, 8}  -- Side edges
+                }
+                for i, edge in ipairs(edges) do
+                    BoxLines[i].From = screenCorners[edge[1]]
+                    BoxLines[i].To = screenCorners[edge[2]]
+                    BoxLines[i].Visible = true
+                end
+            else
+                for i = 1, 12 do
+                    BoxLines[i].Visible = false
+                end
+            end
+        else
+            for i = 1, 12 do
+                BoxLines[i].Visible = false
+            end
+        end
+    end
+
+    RunService.RenderStepped:Connect(update)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= Players.LocalPlayer then
+        createESPBox(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player ~= Players.LocalPlayer then
+        createESPBox(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+end)
